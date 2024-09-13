@@ -1,23 +1,44 @@
 package expense_tracker_package;
 
 public class Expense {
-
     private int id;
     private String description;
     private double amount;
-    private String date;
-    private String category;
-    private String paymentMethod;
 
-    public Expense(int id, String description, double amount, String date, String category, String paymentMethod) {
-        this.id = id;
-        this.description = description;
-        this.amount = amount;
-        this.date = date;
-        this.category = category;
-        this.paymentMethod = paymentMethod;
+    public Expense() {
     }
 
-    // Getters and setters for each field
-    // ...
+    public Expense(String description, double amount) {
+        this.description = description;
+        this.amount = amount;
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public void setId(int id) {
+        this.id = id;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public double getAmount() {
+        return amount;
+    }
+
+    public void setAmount(double amount) {
+        this.amount = amount;
+    }
+
+    @Override
+    public String toString() {
+        return "ID: " + id + ", Description: " + description + ", Amount: " + amount;
+    }
 }
