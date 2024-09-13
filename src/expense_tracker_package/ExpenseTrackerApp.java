@@ -1,92 +1,102 @@
 package expense_tracker_package;
 
-import javafx.application.Application;
-import javafx.geometry.Insets;
-import javafx.scene.Scene;
-import javafx.scene.control.*;
-import javafx.scene.layout.GridPane;
-import javafx.stage.Stage;
+import java.util.Scanner;
 
-public class ExpenseTrackerApp extends Application {
+public class ExpenseTrackerApp {
+    private static ExpenseService expenseService = new ExpenseService();
+    private static Scanner scanner = new Scanner(System.in);
 
-    private ExpenseService expenseService;
+    public static void main(String[] args) {
+        while (true) {
+            System.out.println("\nExpense Tracker");
+            System.out.println("1. Add Expense");
+            System.out.println("2. View Expenses");
+            System.out.println("3. Update Expense");
+            System.out.println("4. Delete Expense");
+            System.out.println("5. Exit");
+            System.out.print("Choose an option: ");
 
-    @Override
-    public void start(Stage primaryStage) {
-        try {
-            DatabaseConnection dbConnection = new DatabaseConnection();
-            ExpenseDAO expenseDAO = new ExpenseDAO(dbConnection.getConnection());
-            expenseService = new ExpenseService(expenseDAO);
+            int choice = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
 
-            primaryStage.setTitle("Expense Tracker");
-
-            // UI Components
-            Label descLabel = new Label("Description:");
-            TextField descField = new TextField();
-
-            Label amountLabel = new Label("Amount:");
-            TextField amountField = new TextField();
-
-            Label dateLabel = new Label("Date (YYYY-MM-DD):");
-            TextField dateField = new TextField();
-
-            Label categoryLabel = new Label("Category:");
-            TextField categoryField = new TextField();
-
-            Label paymentLabel = new Label("Payment Method:");
-            TextField paymentField = new TextField();
-
-            Button addButton = new Button("Add Expense");
-            TextArea outputArea = new TextArea();
-
-            // GridPane Layout
-            GridPane grid = new GridPane();
-            grid.setPadding(new Insets(10, 10, 10, 10));
-            grid.setVgap(8);
-            grid.setHgap(10);
-
-            grid.add(descLabel, 0, 0);
-            grid.add(descField, 1, 0);
-            grid.add(amountLabel, 0, 1);
-            grid.add(amountField, 1, 1);
-            grid.add(dateLabel, 0, 2);
-            grid.add(dateField, 1, 2);
-            grid.add(categoryLabel, 0, 3);
-            grid.add(categoryField, 1, 3);
-            grid.add(paymentLabel, 0, 4);
-            grid.add(paymentField, 1, 4);
-            grid.add(addButton, 1, 5);
-            grid.add(outputArea, 0, 6, 2, 1);
-
-            // Button Action
-            addButton.setOnAction(e -> {
-                try {
-                    expenseService.addExpense(descField.getText(), Double.parseDouble(amountField.getText()), 
-                                              dateField.getText(), categoryField.getText(), paymentField.getText());
-                    outputArea.appendText("Expense added successfully!\n");
-                } catch (Exception ex) {
-                    showErrorDialog("Error", "Failed to add expense. " + ex.getMessage());
-                }
-            });
-
-            // Set up the Scene
-            Scene scene = new Scene(grid, 400, 300);
-            primaryStage.setScene(scene);
-            primaryStage.show();
-        } catch (Exception e) {
-            showErrorDialog("Error", "Failed to connect to the database. " + e.getMessage());
+            switch (choice) {
+                case 1:
+                    addExpense();
+                    break;
+                case 2:
+                    viewExpenses();
+                    break;
+                case 3:
+                    updateExpense();
+                    break;
+                case 4:
+                    deleteExpense();
+                    break;
+                case 5:
+                    System.out.println("Exiting...");
+                    System.exit(0);
+                default:
+                    System.out.println("Invalid option. Please try again.");
+            }
         }
     }
 
-    private void showErrorDialog(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+    private static void addExpense() {
+        System.out.print("Enter description: ");
+        String description = scanner.nextLine();
+        System.out.print("Enter amount: ");
+        double amount = scanner.nextDouble();
+        scanner.nextLine(); // Consume newline
+
+        Expense expense = new Expense(description, amount);
+        expenseService.addExpense(expense);
+        System.out.println("Expense added successfully!");
     }
 
-    public static void main(String[] args) {
-        launch(args);
+    private static void viewExpenses() {
+        System.out.println("\nExpenses:");
+        for (Expense expense : expenseService.getAllExpenses()) {
+            System.out.println(expense);
+        }
+    }
+
+    private static void updateExpense() {
+        System.out.print("Enter the ID of the expense to update: ");
+        int id = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        Expense existingExpense = expenseService.getExpenseById(id);
+        if (existingExpense == null) {
+            System.out.println("Expense not found!");
+            return;
+        }
+
+        System.out.print("Enter new description (leave blank to keep current): ");
+        String description = scanner.nextLine();
+        System.out.print("Enter new amount (enter -1 to keep current): ");
+        double amount = scanner.nextDouble();
+        scanner.nextLine(); // Consume newline
+
+        if (!description.isEmpty()) {
+            existingExpense.setDescription(description);
+        }
+        if (amount != -1) {
+            existingExpense.setAmount(amount);
+        }
+
+        expenseService.updateExpense(existingExpense);
+        System.out.println("Expense updated successfully!");
+    }
+
+    private static void deleteExpense() {
+        System.out.print("Enter the ID of the expense to delete: ");
+        int id = scanner.nextInt();
+        scanner.nextLine(); // Consume newline
+
+        if (expenseService.deleteExpense(id)) {
+            System.out.println("Expense deleted successfully!");
+        } else {
+            System.out.println("Expense not found!");
+        }
     }
 }
