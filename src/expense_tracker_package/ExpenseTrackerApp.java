@@ -8,6 +8,7 @@ import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
+import java.time.LocalDate;
 import java.util.List;
 
 public class ExpenseTrackerApp extends Application {
@@ -18,7 +19,7 @@ public class ExpenseTrackerApp extends Application {
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Expense Tracker");
-   
+
         // Table for displaying expenses
         TableView<Expense> table = new TableView<>();
         TableColumn<Expense, Integer> idColumn = new TableColumn<>("ID");
@@ -30,9 +31,18 @@ public class ExpenseTrackerApp extends Application {
         TableColumn<Expense, Double> amountColumn = new TableColumn<>("Amount");
         amountColumn.setCellValueFactory(cellData -> cellData.getValue().amountProperty().asObject());
 
+        // Add category and date columns
+        TableColumn<Expense, String> categoryColumn = new TableColumn<>("Category");
+        categoryColumn.setCellValueFactory(cellData -> cellData.getValue().categoryProperty());
+
+        TableColumn<Expense, LocalDate> dateColumn = new TableColumn<>("Date");
+        dateColumn.setCellValueFactory(cellData -> cellData.getValue().dateProperty());
+
         table.getColumns().add(idColumn);
         table.getColumns().add(descriptionColumn);
         table.getColumns().add(amountColumn);
+        table.getColumns().add(categoryColumn);  // Add category column
+        table.getColumns().add(dateColumn);      // Add date column
 
         // Buttons for CRUD operations
         Button addButton = new Button("Add Expense");
@@ -51,7 +61,7 @@ public class ExpenseTrackerApp extends Application {
         table.setItems(expenseData);
 
         VBox vbox = new VBox(10, table, addButton, updateButton, deleteButton);
-        Scene scene = new Scene(vbox, 600, 400);
+        Scene scene = new Scene(vbox, 800, 400);  // Adjust width to fit new columns
         primaryStage.setScene(scene);
         primaryStage.show();
     }
@@ -63,20 +73,36 @@ public class ExpenseTrackerApp extends Application {
     }
 
     private void showAddExpenseDialog() {
-        TextInputDialog dialog = new TextInputDialog();
+        Dialog<Expense> dialog = new Dialog<>();
         dialog.setTitle("Add Expense");
         dialog.setHeaderText("Enter Expense Details");
 
-        DialogPane dialogPane = dialog.getDialogPane();
-        dialogPane.setContentText("Description: ");
         TextField descriptionField = new TextField();
         TextField amountField = new TextField();
-        dialogPane.setContent(new VBox(10, new Label("Description:"), descriptionField, new Label("Amount:"), amountField));
+        TextField categoryField = new TextField();
+        DatePicker datePicker = new DatePicker();
 
-        dialog.showAndWait().ifPresent(result -> {
-            String description = descriptionField.getText();
-            double amount = Double.parseDouble(amountField.getText());
-            Expense expense = new Expense(description, amount);
+        VBox dialogContent = new VBox(10, 
+            new Label("Description:"), descriptionField, 
+            new Label("Amount:"), amountField,
+            new Label("Category:"), categoryField,
+            new Label("Date:"), datePicker);
+
+        dialog.getDialogPane().setContent(dialogContent);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(button -> {
+            if (button == ButtonType.OK) {
+                String description = descriptionField.getText();
+                double amount = Double.parseDouble(amountField.getText());
+                String category = categoryField.getText();
+                LocalDate date = datePicker.getValue();
+                return new Expense(description, amount, category, date);
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(expense -> {
             expenseService.addExpense(expense);
             loadExpenses(); // Refresh table
         });
@@ -88,20 +114,37 @@ public class ExpenseTrackerApp extends Application {
             return;
         }
 
-        TextInputDialog dialog = new TextInputDialog();
+        Dialog<Expense> dialog = new Dialog<>();
         dialog.setTitle("Update Expense");
         dialog.setHeaderText("Update Expense Details");
 
-        DialogPane dialogPane = dialog.getDialogPane();
         TextField descriptionField = new TextField(selectedExpense.getDescription());
         TextField amountField = new TextField(String.valueOf(selectedExpense.getAmount()));
+        TextField categoryField = new TextField(selectedExpense.getCategory());
+        DatePicker datePicker = new DatePicker(selectedExpense.getDate());
 
-        dialogPane.setContent(new VBox(10, new Label("Description:"), descriptionField, new Label("Amount:"), amountField));
+        VBox dialogContent = new VBox(10, 
+            new Label("Description:"), descriptionField, 
+            new Label("Amount:"), amountField,
+            new Label("Category:"), categoryField,
+            new Label("Date:"), datePicker);
 
-        dialog.showAndWait().ifPresent(result -> {
-            selectedExpense.setDescription(descriptionField.getText());
-            selectedExpense.setAmount(Double.parseDouble(amountField.getText()));
-            expenseService.updateExpense(selectedExpense);
+        dialog.getDialogPane().setContent(dialogContent);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+        dialog.setResultConverter(button -> {
+            if (button == ButtonType.OK) {
+                selectedExpense.setDescription(descriptionField.getText());
+                selectedExpense.setAmount(Double.parseDouble(amountField.getText()));
+                selectedExpense.setCategory(categoryField.getText());
+                selectedExpense.setDate(datePicker.getValue());
+                return selectedExpense;
+            }
+            return null;
+        });
+
+        dialog.showAndWait().ifPresent(expense -> {
+            expenseService.updateExpense(expense);
             loadExpenses(); // Refresh table
         });
     }
