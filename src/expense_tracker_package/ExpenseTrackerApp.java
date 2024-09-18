@@ -1,171 +1,156 @@
 package expense_tracker_package;
 
 import javafx.application.Application;
-import javafx.collections.FXCollections;
-import javafx.collections.ObservableList;
+import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.layout.VBox;
+import javafx.scene.control.cell.PropertyValueFactory;
+import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-
-import java.time.LocalDate;
-import java.util.List;
+import java.sql.Date;
+import java.util.Optional;
 
 public class ExpenseTrackerApp extends Application {
 
-    private ExpenseService expenseService = new ExpenseService();
-    private ObservableList<Expense> expenseData = FXCollections.observableArrayList();
+    private TableView<Expense> table;
+    private final ExpenseService expenseService = new ExpenseService();
 
     @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Expense Tracker");
 
-        // Table for displaying expenses
-        TableView<Expense> table = new TableView<>();
-        TableColumn<Expense, Integer> idColumn = new TableColumn<>("ID");
-        idColumn.setCellValueFactory(cellData -> cellData.getValue().idProperty().asObject());
+        // Create TableView and columns
+        table = new TableView<>();
+        table.getColumns().add(createColumn("Description", "description"));
+        table.getColumns().add(createColumn("Amount", "amount"));
+        table.getColumns().add(createColumn("Category", "category"));
+        table.getColumns().add(createColumn("Date", "date"));
 
-        TableColumn<Expense, String> descriptionColumn = new TableColumn<>("Description");
-        descriptionColumn.setCellValueFactory(cellData -> cellData.getValue().descriptionProperty());
-
-        TableColumn<Expense, Double> amountColumn = new TableColumn<>("Amount");
-        amountColumn.setCellValueFactory(cellData -> cellData.getValue().amountProperty().asObject());
-
-        // Add category and date columns
-        TableColumn<Expense, String> categoryColumn = new TableColumn<>("Category");
-        categoryColumn.setCellValueFactory(cellData -> cellData.getValue().categoryProperty());
-
-        TableColumn<Expense, LocalDate> dateColumn = new TableColumn<>("Date");
-        dateColumn.setCellValueFactory(cellData -> cellData.getValue().dateProperty());
-
-        table.getColumns().add(idColumn);
-        table.getColumns().add(descriptionColumn);
-        table.getColumns().add(amountColumn);
-        table.getColumns().add(categoryColumn);  // Add category column
-        table.getColumns().add(dateColumn);      // Add date column
-
-        // Buttons for CRUD operations
+        // Create buttons for Add, Edit, and Delete
         Button addButton = new Button("Add Expense");
-        addButton.setOnAction(e -> showAddExpenseDialog());
+        addButton.setOnAction(e -> showExpenseDialog(null, table));
 
-        Button updateButton = new Button("Update Selected Expense");
-        updateButton.setOnAction(e -> showUpdateExpenseDialog(table.getSelectionModel().getSelectedItem()));
+        Button editButton = new Button("Edit Expense");
+        editButton.setOnAction(e -> {
+            Expense selectedExpense = table.getSelectionModel().getSelectedItem();
+            if (selectedExpense != null) {
+                showExpenseDialog(selectedExpense, table);
+            }
+        });
 
-        Button deleteButton = new Button("Delete Selected Expense");
-        deleteButton.setOnAction(e -> deleteExpense(table.getSelectionModel().getSelectedItem()));
+        Button deleteButton = new Button("Delete Expense");
+        deleteButton.setOnAction(e -> {
+            Expense selectedExpense = table.getSelectionModel().getSelectedItem();
+            if (selectedExpense != null) {
+                if (expenseService.deleteExpense(selectedExpense.getId())) {
+                    table.getItems().remove(selectedExpense);
+                } else {
+                    showError("Failed to delete expense.");
+                }
+            }
+        });
 
-        // Load expenses
+        // Load data from database
         loadExpenses();
 
-        // Displaying expenses in the table
-        table.setItems(expenseData);
+        // Layout
+        BorderPane layout = new BorderPane();
+        layout.setCenter(table);
+        ToolBar toolBar = new ToolBar(addButton, editButton, deleteButton);
+        layout.setTop(toolBar);
 
-        VBox vbox = new VBox(10, table, addButton, updateButton, deleteButton);
-        Scene scene = new Scene(vbox, 800, 400);  // Adjust width to fit new columns
+        Scene scene = new Scene(layout, 600, 400);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
-    private void loadExpenses() {
-        List<Expense> expenses = expenseService.getAllExpenses();
-        expenseData.clear();
-        expenseData.addAll(expenses);
+    private <T> TableColumn<Expense, T> createColumn(String title, String property) {
+        TableColumn<Expense, T> column = new TableColumn<>(title);
+        column.setCellValueFactory(new PropertyValueFactory<>(property));
+        return column;
     }
 
-    private void showAddExpenseDialog() {
+    private void showExpenseDialog(Expense expense, TableView<Expense> table) {
         Dialog<Expense> dialog = new Dialog<>();
-        dialog.setTitle("Add Expense");
-        dialog.setHeaderText("Enter Expense Details");
+        dialog.setTitle("Add / Edit Expense");
+
+        // Create buttons
+        ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
+        dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
+
+        // Create form fields
+        GridPane grid = new GridPane();
+        grid.setHgap(10);
+        grid.setVgap(10);
+        grid.setPadding(new Insets(20, 150, 10, 10));
 
         TextField descriptionField = new TextField();
+        descriptionField.setPromptText("Description");
         TextField amountField = new TextField();
+        amountField.setPromptText("Amount");
         TextField categoryField = new TextField();
-        DatePicker datePicker = new DatePicker();
+        categoryField.setPromptText("Category");
+        TextField dateField = new TextField();
+        dateField.setPromptText("YYYY-MM-DD");
 
-        VBox dialogContent = new VBox(10, 
-            new Label("Description:"), descriptionField, 
-            new Label("Amount:"), amountField,
-            new Label("Category:"), categoryField,
-            new Label("Date:"), datePicker);
+        // Pre-fill fields if editing an existing expense
+        if (expense != null) {
+            descriptionField.setText(expense.getDescription());
+            amountField.setText(String.valueOf(expense.getAmount()));
+            categoryField.setText(expense.getCategory());
+            dateField.setText(expense.getDate().toString());
+        }
 
-        dialog.getDialogPane().setContent(dialogContent);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        // Add fields to the grid
+        grid.add(new Label("Description:"), 0, 0);
+        grid.add(descriptionField, 1, 0);
+        grid.add(new Label("Amount:"), 0, 1);
+        grid.add(amountField, 1, 1);
+        grid.add(new Label("Category:"), 0, 2);
+        grid.add(categoryField, 1, 2);
+        grid.add(new Label("Date (YYYY-MM-DD):"), 0, 3);
+        grid.add(dateField, 1, 3);
 
-        dialog.setResultConverter(button -> {
-            if (button == ButtonType.OK) {
-                String description = descriptionField.getText();
-                double amount = Double.parseDouble(amountField.getText());
-                String category = categoryField.getText();
-                LocalDate date = datePicker.getValue();
-                return new Expense(description, amount, category, date);
+        dialog.getDialogPane().setContent(grid);
+
+        // Convert the result to an Expense object when the save button is clicked
+        dialog.setResultConverter(dialogButton -> {
+            if (dialogButton == saveButtonType) {
+                return new Expense(
+                    descriptionField.getText(),
+                    Double.parseDouble(amountField.getText()),
+                    categoryField.getText(),
+                    Date.valueOf(dateField.getText()).toLocalDate()
+                );
             }
             return null;
         });
 
-        dialog.showAndWait().ifPresent(expense -> {
-            expenseService.addExpense(expense);
-            loadExpenses(); // Refresh table
-        });
-    }
-
-    private void showUpdateExpenseDialog(Expense selectedExpense) {
-        if (selectedExpense == null) {
-            showErrorDialog("No Expense Selected", "Please select an expense to update.");
-            return;
-        }
-
-        Dialog<Expense> dialog = new Dialog<>();
-        dialog.setTitle("Update Expense");
-        dialog.setHeaderText("Update Expense Details");
-
-        TextField descriptionField = new TextField(selectedExpense.getDescription());
-        TextField amountField = new TextField(String.valueOf(selectedExpense.getAmount()));
-        TextField categoryField = new TextField(selectedExpense.getCategory());
-        DatePicker datePicker = new DatePicker(selectedExpense.getDate());
-
-        VBox dialogContent = new VBox(10, 
-            new Label("Description:"), descriptionField, 
-            new Label("Amount:"), amountField,
-            new Label("Category:"), categoryField,
-            new Label("Date:"), datePicker);
-
-        dialog.getDialogPane().setContent(dialogContent);
-        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
-
-        dialog.setResultConverter(button -> {
-            if (button == ButtonType.OK) {
-                selectedExpense.setDescription(descriptionField.getText());
-                selectedExpense.setAmount(Double.parseDouble(amountField.getText()));
-                selectedExpense.setCategory(categoryField.getText());
-                selectedExpense.setDate(datePicker.getValue());
-                return selectedExpense;
+        // Show dialog and capture result
+        Optional<Expense> result = dialog.showAndWait();
+        result.ifPresent(resultExpense -> {
+            if (expense == null) {
+                // Add new expense
+                expenseService.addExpense(resultExpense);
+                table.getItems().add(resultExpense);
+            } else {
+                // Update existing expense
+                expenseService.updateExpense(resultExpense);
+                int index = table.getItems().indexOf(expense);
+                table.getItems().set(index, resultExpense);
             }
-            return null;
-        });
-
-        dialog.showAndWait().ifPresent(expense -> {
-            expenseService.updateExpense(expense);
-            loadExpenses(); // Refresh table
         });
     }
 
-    private void deleteExpense(Expense selectedExpense) {
-        if (selectedExpense == null) {
-            showErrorDialog("No Expense Selected", "Please select an expense to delete.");
-            return;
-        }
-
-        boolean success = expenseService.deleteExpense(selectedExpense.getId());
-        if (success) {
-            loadExpenses();
-        } else {
-            showErrorDialog("Error Deleting Expense", "Unable to delete the selected expense.");
-        }
+    private void loadExpenses() {
+        table.getItems().setAll(expenseService.getAllExpenses());
     }
 
-    private void showErrorDialog(String title, String message) {
+    private void showError(String message) {
         Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle(title);
+        alert.setTitle("Error");
+        alert.setHeaderText(null);
         alert.setContentText(message);
         alert.showAndWait();
     }
