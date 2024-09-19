@@ -1,5 +1,5 @@
 package expense_tracker_package;
-
+import java.time.LocalDate;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -8,13 +8,12 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-import java.sql.Date;
 import java.util.Optional;
 
 public class ExpenseTrackerApp extends Application {
 
     private TableView<Expense> table;
-    private final ExpenseService expenseService = new ExpenseService();
+    private ExpenseService expenseService = new ExpenseService();
 
     @Override
     public void start(Stage primaryStage) {
@@ -26,6 +25,9 @@ public class ExpenseTrackerApp extends Application {
         table.getColumns().add(createColumn("Amount", "amount"));
         table.getColumns().add(createColumn("Category", "category"));
         table.getColumns().add(createColumn("Date", "date"));
+
+        // Load initial data
+        table.getItems().addAll(expenseService.getAllExpenses());
 
         // Create buttons for Add, Edit, and Delete
         Button addButton = new Button("Add Expense");
@@ -43,16 +45,10 @@ public class ExpenseTrackerApp extends Application {
         deleteButton.setOnAction(e -> {
             Expense selectedExpense = table.getSelectionModel().getSelectedItem();
             if (selectedExpense != null) {
-                if (expenseService.deleteExpense(selectedExpense.getId())) {
-                    table.getItems().remove(selectedExpense);
-                } else {
-                    showError("Failed to delete expense.");
-                }
+                expenseService.deleteExpense(selectedExpense);
+                table.getItems().remove(selectedExpense);
             }
         });
-
-        // Load data from database
-        loadExpenses();
 
         // Layout
         BorderPane layout = new BorderPane();
@@ -67,7 +63,7 @@ public class ExpenseTrackerApp extends Application {
 
     private <T> TableColumn<Expense, T> createColumn(String title, String property) {
         TableColumn<Expense, T> column = new TableColumn<>(title);
-        column.setCellValueFactory(new PropertyValueFactory<>(property));
+        column.setCellValueFactory(new PropertyValueFactory<>(property));  // Using PropertyValueFactory
         return column;
     }
 
@@ -100,59 +96,44 @@ public class ExpenseTrackerApp extends Application {
             amountField.setText(String.valueOf(expense.getAmount()));
             categoryField.setText(expense.getCategory());
             dateField.setText(expense.getDate().toString());
-        }
-
-        // Add fields to the grid
+            }
         grid.add(new Label("Description:"), 0, 0);
         grid.add(descriptionField, 1, 0);
         grid.add(new Label("Amount:"), 0, 1);
         grid.add(amountField, 1, 1);
         grid.add(new Label("Category:"), 0, 2);
         grid.add(categoryField, 1, 2);
-        grid.add(new Label("Date (YYYY-MM-DD):"), 0, 3);
+        grid.add(new Label("Date:"), 0, 3);
         grid.add(dateField, 1, 3);
 
         dialog.getDialogPane().setContent(grid);
 
-        // Convert the result to an Expense object when the save button is clicked
+        // Convert result to Expense object when Save is clicked
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
-                return new Expense(
-                    descriptionField.getText(),
-                    Double.parseDouble(amountField.getText()),
-                    categoryField.getText(),
-                    Date.valueOf(dateField.getText()).toLocalDate()
-                );
+                String description = descriptionField.getText();
+                double amount = Double.parseDouble(amountField.getText());
+                String category = categoryField.getText();
+                LocalDate date = LocalDate.parse(dateField.getText());
+
+                if (expense == null) {
+                    Expense newExpense = new Expense(description, amount, category, date);
+                    expenseService.addExpense(newExpense);
+                    table.getItems().add(newExpense);
+                } else {
+                    Expense updatedExpense = new Expense(description, amount, category, date);
+                    expenseService.updateExpense(expense, updatedExpense);
+                    table.getItems().set(table.getItems().indexOf(expense), updatedExpense);
+                }
+                return new Expense(description, amount, category, date);
             }
             return null;
         });
 
-        // Show dialog and capture result
         Optional<Expense> result = dialog.showAndWait();
-        result.ifPresent(resultExpense -> {
-            if (expense == null) {
-                // Add new expense
-                expenseService.addExpense(resultExpense);
-                table.getItems().add(resultExpense);
-            } else {
-                // Update existing expense
-                expenseService.updateExpense(resultExpense);
-                int index = table.getItems().indexOf(expense);
-                table.getItems().set(index, resultExpense);
-            }
+        result.ifPresent(exp -> {
+            table.refresh(); // Refresh the table view to reflect changes
         });
-    }
-
-    private void loadExpenses() {
-        table.getItems().setAll(expenseService.getAllExpenses());
-    }
-
-    private void showError(String message) {
-        Alert alert = new Alert(Alert.AlertType.ERROR);
-        alert.setTitle("Error");
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
     }
 
     public static void main(String[] args) {
