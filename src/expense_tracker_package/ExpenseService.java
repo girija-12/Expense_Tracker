@@ -10,10 +10,10 @@ public class ExpenseService {
     public List<Expense> getAllExpenses() {
         return expenseDAO.getAllExpenses();
     }
-    public void updateExpense(Expense oldExpense, Expense newExpense) {
-        expenseDAO.updateExpense(oldExpense, newExpense);
+    public void updateExpense(Expense expense, int index) {
+        expenseDAO.updateExpense(expense, index);
     }
-    public boolean deleteExpense(Expense expense) {
-        return expenseDAO.deleteExpense(expense);
+    public boolean deleteExpense(int id) {
+        return expenseDAO.deleteExpense(id);
     }
 }
