@@ -1,6 +1,8 @@
 package expense_tracker_package;
-import java.time.LocalDate;
+
 import javafx.application.Application;
+import javafx.collections.FXCollections;
+import javafx.collections.ObservableList;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
@@ -8,12 +10,16 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
+
+import java.time.LocalDate;
+import java.util.Comparator;
 import java.util.Optional;
 
 public class ExpenseTrackerApp extends Application {
 
     private TableView<Expense> table;
-    private ExpenseService expenseService = new ExpenseService();
+    private ObservableList<Expense> expenseData;
+    private boolean isSortedAscending = false;
 
     @Override
     public void start(Stage primaryStage) {
@@ -24,20 +30,38 @@ public class ExpenseTrackerApp extends Application {
         table.getColumns().add(createColumn("Description", "description"));
         table.getColumns().add(createColumn("Amount", "amount"));
         table.getColumns().add(createColumn("Category", "category"));
-        table.getColumns().add(createColumn("Date", "date"));
+        TableColumn<Expense, LocalDate> dateColumn = createColumn("Date", "date");
+        table.getColumns().add(dateColumn);
 
-        // Load initial data
-        table.getItems().addAll(expenseService.getAllExpenses());
+        // Sort feature for Date column
+        dateColumn.setSortable(false);
+        Button sortButton = new Button("↑↓");
+        sortButton.setStyle("-fx-text-fill: black;");
+        sortButton.setOnAction(e -> {
+            if (!isSortedAscending) {
+                expenseData.sort(Comparator.comparing(Expense::getDate));
+                sortButton.setStyle("-fx-text-fill: blue;");
+            } else {
+                expenseData.sort(Comparator.comparing(Expense::getDate).reversed());
+                sortButton.setStyle("-fx-text-fill: black;");
+            }
+            isSortedAscending = !isSortedAscending;
+        });
+
+        dateColumn.setGraphic(sortButton);
+
+        expenseData = FXCollections.observableArrayList(new ExpenseService().getAllExpenses());
+        table.setItems(expenseData);
 
         // Create buttons for Add, Edit, and Delete
         Button addButton = new Button("Add Expense");
-        addButton.setOnAction(e -> showExpenseDialog(null, table));
+        addButton.setOnAction(e -> showExpenseDialog(null, null));
 
         Button editButton = new Button("Edit Expense");
         editButton.setOnAction(e -> {
             Expense selectedExpense = table.getSelectionModel().getSelectedItem();
             if (selectedExpense != null) {
-                showExpenseDialog(selectedExpense, table);
+                showExpenseDialog(selectedExpense, getExpenseIndex(selectedExpense));
             }
         });
 
@@ -45,8 +69,8 @@ public class ExpenseTrackerApp extends Application {
         deleteButton.setOnAction(e -> {
             Expense selectedExpense = table.getSelectionModel().getSelectedItem();
             if (selectedExpense != null) {
-                expenseService.deleteExpense(selectedExpense);
-                table.getItems().remove(selectedExpense);
+                expenseData.remove(selectedExpense);
+                // Here you should also delete it from the database
             }
         });
 
@@ -60,22 +84,19 @@ public class ExpenseTrackerApp extends Application {
         primaryStage.setScene(scene);
         primaryStage.show();
     }
-
     private <T> TableColumn<Expense, T> createColumn(String title, String property) {
         TableColumn<Expense, T> column = new TableColumn<>(title);
-        column.setCellValueFactory(new PropertyValueFactory<>(property));  // Using PropertyValueFactory
+        column.setCellValueFactory(new PropertyValueFactory<>(property));
         return column;
     }
 
-    private void showExpenseDialog(Expense expense, TableView<Expense> table) {
+    private void showExpenseDialog(Expense expense, Integer id) {
         Dialog<Expense> dialog = new Dialog<>();
-        dialog.setTitle("Add / Edit Expense");
+        dialog.setTitle(expense == null ? "Add Expense" : "Edit Expense");
 
-        // Create buttons
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
-        // Create form fields
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
@@ -87,16 +108,18 @@ public class ExpenseTrackerApp extends Application {
         amountField.setPromptText("Amount");
         TextField categoryField = new TextField();
         categoryField.setPromptText("Category");
-        TextField dateField = new TextField();
-        dateField.setPromptText("YYYY-MM-DD");
 
-        // Pre-fill fields if editing an existing expense
+        // Date picker for selecting the date from the calendar
+        DatePicker datePicker = new DatePicker();
+        datePicker.setPromptText("Choose date");
+
         if (expense != null) {
             descriptionField.setText(expense.getDescription());
             amountField.setText(String.valueOf(expense.getAmount()));
             categoryField.setText(expense.getCategory());
-            dateField.setText(expense.getDate().toString());
-            }
+            datePicker.setValue(expense.getDate());
+        }
+
         grid.add(new Label("Description:"), 0, 0);
         grid.add(descriptionField, 1, 0);
         grid.add(new Label("Amount:"), 0, 1);
@@ -104,38 +127,35 @@ public class ExpenseTrackerApp extends Application {
         grid.add(new Label("Category:"), 0, 2);
         grid.add(categoryField, 1, 2);
         grid.add(new Label("Date:"), 0, 3);
-        grid.add(dateField, 1, 3);
+        grid.add(datePicker, 1, 3);
 
         dialog.getDialogPane().setContent(grid);
-
-        // Convert result to Expense object when Save is clicked
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
-                String description = descriptionField.getText();
-                double amount = Double.parseDouble(amountField.getText());
-                String category = categoryField.getText();
-                LocalDate date = LocalDate.parse(dateField.getText());
-
-                if (expense == null) {
-                    Expense newExpense = new Expense(description, amount, category, date);
-                    expenseService.addExpense(newExpense);
-                    table.getItems().add(newExpense);
-                } else {
-                    Expense updatedExpense = new Expense(description, amount, category, date);
-                    expenseService.updateExpense(expense, updatedExpense);
-                    table.getItems().set(table.getItems().indexOf(expense), updatedExpense);
-                }
-                return new Expense(description, amount, category, date);
+                return new Expense(
+                        descriptionField.getText(),
+                        Double.parseDouble(amountField.getText()),
+                        categoryField.getText(),
+                        datePicker.getValue()
+                );
             }
             return null;
         });
 
         Optional<Expense> result = dialog.showAndWait();
-        result.ifPresent(exp -> {
-            table.refresh(); // Refresh the table view to reflect changes
+        result.ifPresent(expenseResult -> {
+            if (expense == null) {
+                expenseData.add(expenseResult);
+                new ExpenseService().addExpense(expenseResult);
+            } else {
+                expenseData.set(id, expenseResult);
+                new ExpenseService().updateExpense(expenseResult, id);
+            }
         });
     }
-
+    private Integer getExpenseIndex(Expense expense) {
+        return expenseData.indexOf(expense);  // assuming this is a unique entry
+    }
     public static void main(String[] args) {
         launch(args);
     }
