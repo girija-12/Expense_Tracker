@@ -1,6 +1,7 @@
 package expense_tracker_package;
 
 import java.time.LocalDate;
+
 public class Expense {
     private String description;
     private double amount;
