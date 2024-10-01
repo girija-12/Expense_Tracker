@@ -10,18 +10,14 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
-
 import java.time.LocalDate;
-import java.util.Comparator;
 import java.util.Optional;
 
 public class ExpenseTrackerApp extends Application {
 
     private TableView<Expense> table;
     private ObservableList<Expense> expenseData;
-    private boolean isSortedAscending = false;
 
-    @Override
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Expense Tracker");
 
@@ -32,23 +28,6 @@ public class ExpenseTrackerApp extends Application {
         table.getColumns().add(createColumn("Category", "category"));
         TableColumn<Expense, LocalDate> dateColumn = createColumn("Date", "date");
         table.getColumns().add(dateColumn);
-
-        // Sort feature for Date column
-        dateColumn.setSortable(false);
-        Button sortButton = new Button("↑↓");
-        sortButton.setStyle("-fx-text-fill: black;");
-        sortButton.setOnAction(e -> {
-            if (!isSortedAscending) {
-                expenseData.sort(Comparator.comparing(Expense::getDate));
-                sortButton.setStyle("-fx-text-fill: blue;");
-            } else {
-                expenseData.sort(Comparator.comparing(Expense::getDate).reversed());
-                sortButton.setStyle("-fx-text-fill: black;");
-            }
-            isSortedAscending = !isSortedAscending;
-        });
-
-        dateColumn.setGraphic(sortButton);
 
         expenseData = FXCollections.observableArrayList(new ExpenseService().getAllExpenses());
         table.setItems(expenseData);
