@@ -3,6 +3,7 @@ package expense_tracker_package;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
+
 public class ExpenseDAO {
     private static final String INSERT_QUERY = "INSERT INTO expenses (description, amount, category, date) VALUES (?, ?, ?, ?)";
     private static final String SELECT_ALL_QUERY = "SELECT * FROM expenses";
