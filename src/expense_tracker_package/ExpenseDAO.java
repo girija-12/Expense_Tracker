@@ -7,8 +7,8 @@ import java.util.List;
 public class ExpenseDAO {
     private static final String INSERT_QUERY = "INSERT INTO expenses (description, amount, category, date) VALUES (?, ?, ?, ?)";
     private static final String SELECT_ALL_QUERY = "SELECT * FROM expenses";
-    private static final String UPDATE_QUERY = "UPDATE expenses SET description = ?, amount = ?, category = ?, date = ? WHERE id = ?";
-    private static final String DELETE_QUERY = "DELETE FROM expenses WHERE id = ?";
+    private static final String UPDATE_QUERY = "UPDATE expenses SET description = ?, amount = ?, category = ?, date = ? WHERE description = ? AND amount = ? AND category = ? AND date = ?";
+    private static final String DELETE_QUERY = "DELETE FROM expenses WHERE description = ? AND amount = ? AND category = ? AND date = ?";
 
     public void addExpense(Expense expense) {
         try (Connection connection = DatabaseConnection.getConnection();
@@ -38,29 +38,32 @@ public class ExpenseDAO {
         }
         return expenses;
     }
-    public void updateExpense(Expense expense, int index) {
+    public void updateExpense(Expense newExpense, Expense oldExpense) {
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(UPDATE_QUERY)) {
-            setPreparedStatement(statement, expense);
-            statement.setInt(5, index);  // assuming index is the id here
+            setPreparedStatement(statement, newExpense);
+            setPreparedStatement(statement, oldExpense, 5);  // Parameters for the WHERE clause
             statement.executeUpdate();
         } catch (SQLException e) {
             throw new RuntimeException("Error updating expense", e);
         }
     }
-    public boolean deleteExpense(int id) {
+    public boolean deleteExpense(Expense expense) {
         try (Connection connection = DatabaseConnection.getConnection();
              PreparedStatement statement = connection.prepareStatement(DELETE_QUERY)) {
-            statement.setInt(1, id);
+            setPreparedStatement(statement, expense);
             return statement.executeUpdate() > 0;
         } catch (SQLException e) {
             throw new RuntimeException("Error deleting expense", e);
         }
     }
     private void setPreparedStatement(PreparedStatement statement, Expense expense) throws SQLException {
-        statement.setString(1, expense.getDescription());
-        statement.setDouble(2, expense.getAmount());
-        statement.setString(3, expense.getCategory());
-        statement.setDate(4, Date.valueOf(expense.getDate()));
+        setPreparedStatement(statement, expense, 1);
+    }
+    private void setPreparedStatement(PreparedStatement statement, Expense expense, int startIndex) throws SQLException {
+        statement.setString(startIndex, expense.getDescription());
+        statement.setDouble(startIndex + 1, expense.getAmount());
+        statement.setString(startIndex + 2, expense.getCategory());
+        statement.setDate(startIndex + 3, Date.valueOf(expense.getDate()));
     }
 }
