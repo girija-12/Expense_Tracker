@@ -117,7 +117,6 @@ public class ExpenseTrackerApp extends Application {
             }
             return null;
         });
-
         Optional<Expense> result = dialog.showAndWait();
         result.ifPresent(newExpenseResult -> {
             if (oldExpense == null) {
