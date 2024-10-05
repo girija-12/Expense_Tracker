@@ -40,16 +40,15 @@ public class ExpenseTrackerApp extends Application {
         editButton.setOnAction(e -> {
             Expense selectedExpense = table.getSelectionModel().getSelectedItem();
             if (selectedExpense != null) {
-                showExpenseDialog(selectedExpense, getExpenseIndex(selectedExpense));
+                showExpenseDialog(selectedExpense, selectedExpense);
             }
         });
-
         Button deleteButton = new Button("Delete Expense");
         deleteButton.setOnAction(e -> {
             Expense selectedExpense = table.getSelectionModel().getSelectedItem();
             if (selectedExpense != null) {
+                new ExpenseService().deleteExpense(selectedExpense);
                 expenseData.remove(selectedExpense);
-                // Here you should also delete it from the database
             }
         });
 
@@ -68,10 +67,9 @@ public class ExpenseTrackerApp extends Application {
         column.setCellValueFactory(new PropertyValueFactory<>(property));
         return column;
     }
-
-    private void showExpenseDialog(Expense expense, Integer id) {
+    private void showExpenseDialog(Expense oldExpense, Expense newExpense) {
         Dialog<Expense> dialog = new Dialog<>();
-        dialog.setTitle(expense == null ? "Add Expense" : "Edit Expense");
+        dialog.setTitle(oldExpense == null ? "Add Expense" : "Edit Expense");
 
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
@@ -88,15 +86,14 @@ public class ExpenseTrackerApp extends Application {
         TextField categoryField = new TextField();
         categoryField.setPromptText("Category");
 
-        // Date picker for selecting the date from the calendar
         DatePicker datePicker = new DatePicker();
         datePicker.setPromptText("Choose date");
 
-        if (expense != null) {
-            descriptionField.setText(expense.getDescription());
-            amountField.setText(String.valueOf(expense.getAmount()));
-            categoryField.setText(expense.getCategory());
-            datePicker.setValue(expense.getDate());
+        if (oldExpense != null) {
+            descriptionField.setText(oldExpense.getDescription());
+            amountField.setText(String.valueOf(oldExpense.getAmount()));
+            categoryField.setText(oldExpense.getCategory());
+            datePicker.setValue(oldExpense.getDate());
         }
 
         grid.add(new Label("Description:"), 0, 0);
@@ -122,20 +119,18 @@ public class ExpenseTrackerApp extends Application {
         });
 
         Optional<Expense> result = dialog.showAndWait();
-        result.ifPresent(expenseResult -> {
-            if (expense == null) {
-                expenseData.add(expenseResult);
-                new ExpenseService().addExpense(expenseResult);
+        result.ifPresent(newExpenseResult -> {
+            if (oldExpense == null) {
+                expenseData.add(newExpenseResult);
+                new ExpenseService().addExpense(newExpenseResult);
             } else {
-                expenseData.set(id, expenseResult);
-                new ExpenseService().updateExpense(expenseResult, id);
+                expenseData.set(expenseData.indexOf(oldExpense), newExpenseResult);
+                new ExpenseService().updateExpense(newExpenseResult, oldExpense);
             }
         });
-    }
-    private Integer getExpenseIndex(Expense expense) {
-        return expenseData.indexOf(expense);  // assuming this is a unique entry
     }
     public static void main(String[] args) {
         launch(args);
     }
 }
+
