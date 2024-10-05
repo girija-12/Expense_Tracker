@@ -94,6 +94,9 @@ public class ExpenseTrackerApp extends Application {
             amountField.setText(String.valueOf(oldExpense.getAmount()));
             categoryField.setText(oldExpense.getCategory());
             datePicker.setValue(oldExpense.getDate());
+        } else {
+            datePicker.setValue(LocalDate.now());  // Set current date for new expense
+            datePicker.setDisable(true);
         }
 
         grid.add(new Label("Description:"), 0, 0);
@@ -108,15 +111,33 @@ public class ExpenseTrackerApp extends Application {
         dialog.getDialogPane().setContent(grid);
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
+                LocalDate selectedDate = datePicker.getValue();
+
+                // Try-catch block to ensure the date is not in the future
+                try {
+                    if (selectedDate.isAfter(LocalDate.now())) {
+                        throw new IllegalArgumentException("Date cannot be in the future.");
+                    }
+                } catch (IllegalArgumentException e) {
+                    // Show alert if the date is in the future
+                    Alert alert = new Alert(Alert.AlertType.ERROR);
+                    alert.setTitle("Invalid Date");
+                    alert.setHeaderText(null);
+                    alert.setContentText(e.getMessage());
+                    alert.showAndWait();
+                    return null; // Return null to prevent saving the expense
+                }
+
                 return new Expense(
                         descriptionField.getText(),
                         Double.parseDouble(amountField.getText()),
                         categoryField.getText(),
-                        datePicker.getValue()
+                        selectedDate
                 );
             }
             return null;
         });
+
         Optional<Expense> result = dialog.showAndWait();
         result.ifPresent(newExpenseResult -> {
             if (oldExpense == null) {
@@ -132,4 +153,3 @@ public class ExpenseTrackerApp extends Application {
         launch(args);
     }
 }
-
