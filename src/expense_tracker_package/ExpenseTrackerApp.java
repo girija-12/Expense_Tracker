@@ -12,12 +12,10 @@ import javafx.scene.layout.GridPane;
 import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.util.Optional;
-
 public class ExpenseTrackerApp extends Application {
 
     private TableView<Expense> table;
     private ObservableList<Expense> expenseData;
-
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Expense Tracker");
 
@@ -43,12 +41,17 @@ public class ExpenseTrackerApp extends Application {
                 showExpenseDialog(selectedExpense, selectedExpense);
             }
         });
+
         Button deleteButton = new Button("Delete Expense");
         deleteButton.setOnAction(e -> {
             Expense selectedExpense = table.getSelectionModel().getSelectedItem();
             if (selectedExpense != null) {
-                new ExpenseService().deleteExpense(selectedExpense);
-                expenseData.remove(selectedExpense);
+                try {
+                    new ExpenseService().deleteExpense(selectedExpense);
+                    expenseData.remove(selectedExpense);
+                } catch (RuntimeException ex) {
+                    showAlert("Error", ex.getMessage());
+                }
             }
         });
 
@@ -95,10 +98,8 @@ public class ExpenseTrackerApp extends Application {
             categoryField.setText(oldExpense.getCategory());
             datePicker.setValue(oldExpense.getDate());
         } else {
-            datePicker.setValue(LocalDate.now());  // Set current date for new expense
-            datePicker.setDisable(true);
+            datePicker.setValue(LocalDate.now()); // Set current date for new expense
         }
-
         grid.add(new Label("Description:"), 0, 0);
         grid.add(descriptionField, 1, 0);
         grid.add(new Label("Amount:"), 0, 1);
@@ -112,42 +113,46 @@ public class ExpenseTrackerApp extends Application {
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
                 LocalDate selectedDate = datePicker.getValue();
-
-                // Try-catch block to ensure the date is not in the future
                 try {
                     if (selectedDate.isAfter(LocalDate.now())) {
                         throw new IllegalArgumentException("Date cannot be in the future.");
                     }
-                } catch (IllegalArgumentException e) {
-                    // Show alert if the date is in the future
-                    Alert alert = new Alert(Alert.AlertType.ERROR);
-                    alert.setTitle("Invalid Date");
-                    alert.setHeaderText(null);
-                    alert.setContentText(e.getMessage());
-                    alert.showAndWait();
-                    return null; // Return null to prevent saving the expense
-                }
 
-                return new Expense(
-                        descriptionField.getText(),
-                        Double.parseDouble(amountField.getText()),
-                        categoryField.getText(),
-                        selectedDate
-                );
+                    return new Expense(
+                            descriptionField.getText(),
+                            Double.parseDouble(amountField.getText()),
+                            categoryField.getText(),
+                            selectedDate
+                    );
+                } catch (NumberFormatException e) {
+                    showAlert("Invalid Input", "Amount must be a valid number.");
+                } catch (IllegalArgumentException e) {
+                    showAlert("Invalid Date", e.getMessage());
+                }
             }
             return null;
         });
-
         Optional<Expense> result = dialog.showAndWait();
         result.ifPresent(newExpenseResult -> {
-            if (oldExpense == null) {
-                expenseData.add(newExpenseResult);
-                new ExpenseService().addExpense(newExpenseResult);
-            } else {
-                expenseData.set(expenseData.indexOf(oldExpense), newExpenseResult);
-                new ExpenseService().updateExpense(newExpenseResult, oldExpense);
+            try {
+                if (oldExpense == null) {
+                    expenseData.add(newExpenseResult);
+                    new ExpenseService().addExpense(newExpenseResult);
+                } else {
+                    expenseData.set(expenseData.indexOf(oldExpense), newExpenseResult);
+                    new ExpenseService().updateExpense(newExpenseResult, oldExpense);
+                }
+            } catch (RuntimeException e) {
+                showAlert("Error", e.getMessage());
             }
         });
+    }
+    private void showAlert(String title, String content) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(content);
+        alert.showAndWait();
     }
     public static void main(String[] args) {
         launch(args);
