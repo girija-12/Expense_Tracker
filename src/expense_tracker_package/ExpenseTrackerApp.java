@@ -99,6 +99,7 @@ public class ExpenseTrackerApp extends Application {
             datePicker.setValue(oldExpense.getDate());
         } else {
             datePicker.setValue(LocalDate.now()); // Set current date for new expense
+            datePicker.setDisable(true);
         }
         grid.add(new Label("Description:"), 0, 0);
         grid.add(descriptionField, 1, 0);
