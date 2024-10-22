@@ -9,6 +9,7 @@ import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
+import javafx.scene.layout.VBox;
 import javafx.stage.Stage;
 
 import java.time.LocalDate;
@@ -112,6 +113,8 @@ public class ExpenseTrackerApp extends Application {
             datePicker.setValue(oldExpense.getDate());
         } else {
             datePicker.setValue(LocalDate.now());
+            datePicker.setDisable(true);
+
         }
 
         grid.add(new Label("Description:"), 0, 0);
@@ -171,33 +174,46 @@ public class ExpenseTrackerApp extends Application {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Manage Categories");
 
-        ButtonType addCategoryButton = new ButtonType("Add Category");
-        ButtonType editCategoryButton = new ButtonType("Edit Category");
-        ButtonType deleteCategoryButton = new ButtonType("Delete Category");
+        // Create a VBox to hold the category list and buttons
+        VBox vbox = new VBox();
+        vbox.setPadding(new Insets(10));
+        vbox.setSpacing(10);
 
-        dialog.getDialogPane().getButtonTypes().addAll(addCategoryButton, editCategoryButton, deleteCategoryButton, ButtonType.CANCEL);
+        // Display current categories in a ListView
+        ListView<String> categoryListView = new ListView<>(categories);
+        categoryListView.setPrefHeight(150);
 
-        // Show current categories
-        StringBuilder currentCategories = new StringBuilder("Current Categories:\n");
-        for (String category : categories) {
-            currentCategories.append(category).append("\n");
-        }
+        // Add buttons for managing categories
+        Button addCategoryButton = new Button("Add Category");
+        Button editCategoryButton = new Button("Edit Category");
+        Button deleteCategoryButton = new Button("Delete Category");
 
-        Alert categoryListAlert = new Alert(Alert.AlertType.INFORMATION, currentCategories.toString());
-        categoryListAlert.setTitle("Categories");
-        categoryListAlert.setHeaderText(null);
-        categoryListAlert.showAndWait();
-
-        Optional<ButtonType> result = dialog.showAndWait();
-        result.ifPresent(buttonType -> {
-            if (buttonType == addCategoryButton) {
-                showAddCategoryDialog();
-            } else if (buttonType == editCategoryButton) {
-                showEditCategoryDialog();
-            } else if (buttonType == deleteCategoryButton) {
-                showDeleteCategoryDialog();
+        // Set button actions
+        addCategoryButton.setOnAction(e -> showAddCategoryDialog());
+        editCategoryButton.setOnAction(e -> {
+            String selectedCategory = categoryListView.getSelectionModel().getSelectedItem();
+            if (selectedCategory != null) {
+                showEditCategoryDialog(selectedCategory);
+            } else {
+                showAlert("Error", "Please select a category to edit.");
             }
         });
+        deleteCategoryButton.setOnAction(e -> {
+            String selectedCategory = categoryListView.getSelectionModel().getSelectedItem();
+            if (selectedCategory != null) {
+                showDeleteCategoryDialog(selectedCategory);
+            } else {
+                showAlert("Error", "Please select a category to delete.");
+            }
+        });
+
+        // Add components to the VBox
+        vbox.getChildren().addAll(new Label("Current Categories:"), categoryListView, addCategoryButton, editCategoryButton, deleteCategoryButton);
+
+        dialog.getDialogPane().setContent(vbox);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CANCEL);
+
+        dialog.showAndWait();
     }
 
     private void showAddCategoryDialog() {
@@ -217,44 +233,27 @@ public class ExpenseTrackerApp extends Application {
         });
     }
 
-    private void showEditCategoryDialog() {
-        TextInputDialog dialog = new TextInputDialog();
+    private void showEditCategoryDialog(String oldCategory) {
+        TextInputDialog dialog = new TextInputDialog(oldCategory);
         dialog.setTitle("Edit Category");
-        dialog.setHeaderText("Select a category to edit:");
-        dialog.setContentText("Category name:");
+        dialog.setHeaderText("Edit category name:");
+        dialog.setContentText("New category name:");
 
-        String[] categoryArray = categories.toArray(new String[0]);
-        ChoiceDialog<String> choiceDialog = new ChoiceDialog<>(categoryArray[0], categoryArray);
-        choiceDialog.setTitle("Edit Category");
-        choiceDialog.setHeaderText("Choose a category to edit:");
-
-        Optional<String> selectedCategory = choiceDialog.showAndWait();
-        selectedCategory.ifPresent(oldCategory -> {
-            dialog.setContentText("New category name:");
-            Optional<String> newCategoryResult = dialog.showAndWait();
-            newCategoryResult.ifPresent(newCategory -> {
-                if (!newCategory.isEmpty() && !categories.contains(newCategory)) {
-                    categories.remove(oldCategory);
-                    categories.add(newCategory);
-                    showAlert("Success", "Category edited successfully!");
-                } else {
-                    showAlert("Error", "Category name must be unique and not empty.");
-                }
-            });
+        Optional<String> newCategoryResult = dialog.showAndWait();
+        newCategoryResult.ifPresent(newCategory -> {
+            if (!newCategory.isEmpty() && !categories.contains(newCategory)) {
+                categories.remove(oldCategory);
+                categories.add(newCategory);
+                showAlert("Success", "Category edited successfully!");
+            } else {
+                showAlert("Error", "Category name must be unique and not empty.");
+            }
         });
     }
 
-    private void showDeleteCategoryDialog() {
-        String[] categoryArray = categories.toArray(new String[0]);
-        ChoiceDialog<String> choiceDialog = new ChoiceDialog<>(categoryArray[0], categoryArray);
-        choiceDialog.setTitle("Delete Category");
-        choiceDialog.setHeaderText("Choose a category to delete:");
-
-        Optional<String> selectedCategory = choiceDialog.showAndWait();
-        selectedCategory.ifPresent(category -> {
-            categories.remove(category);
-            showAlert("Success", "Category deleted successfully!");
-        });
+    private void showDeleteCategoryDialog(String category) {
+        categories.remove(category);
+        showAlert("Success", "Category deleted successfully!");
     }
 
     private void showAlert(String title, String content) {
