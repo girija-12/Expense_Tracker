@@ -17,27 +17,31 @@ import java.util.Optional;
 
 public class ExpenseTrackerApp extends Application {
 
+    // Table to display expenses
     private TableView<Expense> table;
+    // Observable list to hold expense data
     private ObservableList<Expense> expenseData;
+    // Observable list to manage categories
     private ObservableList<String> categories;
 
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Expense Tracker");
 
-        // Initialize categories
+        // Initialize categories with some default values
         categories = FXCollections.observableArrayList("Food", "Transport", "Utilities", "Entertainment");
 
-        // Create TableView and columns
+        // Create TableView and add columns for expense attributes
         table = new TableView<>();
         table.getColumns().add(createColumn("Description", "description"));
         table.getColumns().add(createColumn("Amount", "amount"));
         table.getColumns().add(createColumn("Category", "category"));
         table.getColumns().add(createColumn("Date", "date"));
 
+        // Load existing expenses into the table
         expenseData = FXCollections.observableArrayList(new ExpenseService().getAllExpenses());
         table.setItems(expenseData);
 
-        // Create buttons for Add, Edit, Delete, and Change Category
+        // Create buttons for adding, editing, deleting expenses, and managing categories
         Button addButton = new Button("Add Expense");
         addButton.setOnAction(e -> showExpenseDialog(null));
 
@@ -65,47 +69,55 @@ public class ExpenseTrackerApp extends Application {
         Button changeCategoryButton = new Button("Change Category");
         changeCategoryButton.setOnAction(e -> showCategoryManagementDialog());
 
-        // Layout
+        // Set up the toolbar layout
         ToolBar toolBar = new ToolBar(addButton, editButton, deleteButton, changeCategoryButton);
         BorderPane layout = new BorderPane();
         layout.setCenter(table);
         layout.setTop(toolBar);
 
+        // Create and display the main application scene
         Scene scene = new Scene(layout, 600, 400);
         primaryStage.setScene(scene);
         primaryStage.show();
     }
 
+    // Create a TableColumn for the specified title and property
     private <T> TableColumn<Expense, T> createColumn(String title, String property) {
         TableColumn<Expense, T> column = new TableColumn<>(title);
         column.setCellValueFactory(new PropertyValueFactory<>(property));
         return column;
     }
 
+    // Show a dialog for adding or editing an expense
     private void showExpenseDialog(Expense oldExpense) {
         Dialog<Expense> dialog = new Dialog<>();
         dialog.setTitle(oldExpense == null ? "Add Expense" : "Edit Expense");
 
+        // Define buttons for the dialog
         ButtonType saveButtonType = new ButtonType("Save", ButtonBar.ButtonData.OK_DONE);
         dialog.getDialogPane().getButtonTypes().addAll(saveButtonType, ButtonType.CANCEL);
 
+        // Create a grid pane for input fields
         GridPane grid = new GridPane();
         grid.setHgap(10);
         grid.setVgap(10);
         grid.setPadding(new Insets(20, 150, 10, 10));
 
+        // Input fields for expense details
         TextField descriptionField = new TextField();
         descriptionField.setPromptText("Description");
         TextField amountField = new TextField();
         amountField.setPromptText("Amount");
 
-        // Dropdown for categories
+        // Dropdown for selecting categories
         ComboBox<String> categoryComboBox = new ComboBox<>(categories);
-        categoryComboBox.setEditable(true); // Allow typing new categories
+        categoryComboBox.setEditable(true); // Allow user to add new categories
 
+        // Date picker for selecting the expense date
         DatePicker datePicker = new DatePicker();
         datePicker.setPromptText("Choose date");
 
+        // Populate fields if editing an existing expense
         if (oldExpense != null) {
             descriptionField.setText(oldExpense.getDescription());
             amountField.setText(String.valueOf(oldExpense.getAmount()));
@@ -113,10 +125,10 @@ public class ExpenseTrackerApp extends Application {
             datePicker.setValue(oldExpense.getDate());
         } else {
             datePicker.setValue(LocalDate.now());
-            datePicker.setDisable(true);
-
+            datePicker.setDisable(true); // Disable date selection for new expenses
         }
 
+        // Add input fields to the grid
         grid.add(new Label("Description:"), 0, 0);
         grid.add(descriptionField, 1, 0);
         grid.add(new Label("Amount:"), 0, 1);
@@ -131,6 +143,7 @@ public class ExpenseTrackerApp extends Application {
             if (dialogButton == saveButtonType) {
                 LocalDate selectedDate = datePicker.getValue();
                 try {
+                    // Validate date and amount
                     if (selectedDate.isAfter(LocalDate.now())) {
                         throw new IllegalArgumentException("Date cannot be in the future.");
                     }
@@ -139,6 +152,7 @@ public class ExpenseTrackerApp extends Application {
                         throw new IllegalArgumentException("Amount must be positive.");
                     }
 
+                    // Return a new Expense object
                     return new Expense(
                             descriptionField.getText(),
                             amount,
@@ -154,9 +168,11 @@ public class ExpenseTrackerApp extends Application {
             return null;
         });
 
+        // Handle the result from the dialog
         Optional<Expense> result = dialog.showAndWait();
         result.ifPresent(newExpenseResult -> {
             try {
+                // Add or update the expense in the data list
                 if (oldExpense == null) {
                     expenseData.add(newExpenseResult);
                     new ExpenseService().addExpense(newExpenseResult);
@@ -170,11 +186,12 @@ public class ExpenseTrackerApp extends Application {
         });
     }
 
+    // Show a dialog to manage expense categories
     private void showCategoryManagementDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Manage Categories");
 
-        // Create a VBox to hold the category list and buttons
+        // Create a VBox to hold the category list and management buttons
         VBox vbox = new VBox();
         vbox.setPadding(new Insets(10));
         vbox.setSpacing(10);
@@ -188,7 +205,7 @@ public class ExpenseTrackerApp extends Application {
         Button editCategoryButton = new Button("Edit Category");
         Button deleteCategoryButton = new Button("Delete Category");
 
-        // Set button actions
+        // Set button actions for category management
         addCategoryButton.setOnAction(e -> showAddCategoryDialog());
         editCategoryButton.setOnAction(e -> {
             String selectedCategory = categoryListView.getSelectionModel().getSelectedItem();
@@ -216,6 +233,7 @@ public class ExpenseTrackerApp extends Application {
         dialog.showAndWait();
     }
 
+    // Show dialog to add a new category
     private void showAddCategoryDialog() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Add Category");
@@ -224,6 +242,7 @@ public class ExpenseTrackerApp extends Application {
 
         Optional<String> result = dialog.showAndWait();
         result.ifPresent(newCategory -> {
+            // Ensure the category is unique and not empty
             if (!newCategory.isEmpty() && !categories.contains(newCategory)) {
                 categories.add(newCategory);
                 showAlert("Success", "Category added successfully!");
@@ -233,6 +252,7 @@ public class ExpenseTrackerApp extends Application {
         });
     }
 
+    // Show dialog to edit an existing category
     private void showEditCategoryDialog(String oldCategory) {
         TextInputDialog dialog = new TextInputDialog(oldCategory);
         dialog.setTitle("Edit Category");
@@ -241,6 +261,7 @@ public class ExpenseTrackerApp extends Application {
 
         Optional<String> newCategoryResult = dialog.showAndWait();
         newCategoryResult.ifPresent(newCategory -> {
+            // Ensure the new category is unique and not empty
             if (!newCategory.isEmpty() && !categories.contains(newCategory)) {
                 categories.remove(oldCategory);
                 categories.add(newCategory);
@@ -251,11 +272,13 @@ public class ExpenseTrackerApp extends Application {
         });
     }
 
+    // Show dialog to delete a category
     private void showDeleteCategoryDialog(String category) {
         categories.remove(category);
         showAlert("Success", "Category deleted successfully!");
     }
 
+    // Utility method to show an alert dialog
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -264,6 +287,7 @@ public class ExpenseTrackerApp extends Application {
         alert.showAndWait();
     }
 
+    // Main method to launch the application
     public static void main(String[] args) {
         launch(args);
     }
