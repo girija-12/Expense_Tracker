@@ -66,11 +66,11 @@ public class ExpenseTrackerApp extends Application {
             }
         });
 
-        Button changeCategoryButton = new Button("Change Category");
-        changeCategoryButton.setOnAction(e -> showCategoryManagementDialog());
+        Button manageCategoryButton = new Button("Manage Category");
+        manageCategoryButton.setOnAction(e -> showCategoryManagementDialog());
 
         // Set up the toolbar layout
-        ToolBar toolBar = new ToolBar(addButton, editButton, deleteButton, changeCategoryButton);
+        ToolBar toolBar = new ToolBar(addButton, editButton, deleteButton, manageCategoryButton);
         BorderPane layout = new BorderPane();
         layout.setCenter(table);
         layout.setTop(toolBar);
