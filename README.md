@@ -64,12 +64,34 @@ Make sure you have the following installed:
    cd Expense_Tracker
    ```
 
-2. **Add JavaFX libraries to your project:**
+## 2. Set Environment Variables for Database Connection (if applicable)
+
+Before running the application, make sure to set the following environment variables to configure the database connection:
+
+### On Linux/macOS (bash)
+
+```bash
+export DB_URL=database_url
+export DB_USER=root
+export DB_PASSWORD=your_password
+```
+Replace `your_password` with your actual MySQL root password.
+
+### On Windows (Command Prompt)
+
+```cmd
+set DB_URL=jdbc: database_url
+set DB_USER=root
+set DB_PASSWORD=your_password
+```
+Note: These environment variables are necessary for the application to connect to the MySQL database.
+
+3. **Add JavaFX libraries to your project:**
 
    - Download JavaFX SDK from [Gluon](https://gluonhq.com/products/javafx/).
    - Configure your IDE to add the JavaFX modules `javafx.controls` and `javafx.fxml` as library dependencies.
 
-3. **Build the project:**
+4. **Build the project:**
 
    Use your IDE’s build tools to compile the source files.
 
