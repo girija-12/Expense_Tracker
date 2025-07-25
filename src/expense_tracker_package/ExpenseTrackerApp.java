@@ -15,15 +15,36 @@ import javafx.stage.Stage;
 import java.time.LocalDate;
 import java.util.Optional;
 
+/**
+ * JavaFX application class for the Expense Tracker UI.
+ * 
+ * <p>This application allows users to manage their expenses by adding,
+ * editing, deleting entries, and managing expense categories.</p>
+ * 
+ * <p>The UI consists of a table displaying expenses and toolbar buttons
+ * for interacting with the data.</p>
+ * 
+ * <p>Uses {@link ExpenseService} for CRUD operations on expenses.</p>
+ * 
+ * @see ExpenseService
+ * @see Expense
+ */
 public class ExpenseTrackerApp extends Application {
 
-    // Table to display expenses
+    /** TableView displaying all expenses */
     private TableView<Expense> table;
-    // Observable list to hold expense data
+
+    /** ObservableList holding expense data displayed in the table */
     private ObservableList<Expense> expenseData;
-    // Observable list to manage categories
+
+    /** ObservableList holding categories for expenses */
     private ObservableList<String> categories;
 
+    /**
+     * JavaFX application entry point. Sets up the primary stage and UI components.
+     *
+     * @param primaryStage the main application window
+     */
     public void start(Stage primaryStage) {
         primaryStage.setTitle("Expense Tracker");
 
@@ -41,7 +62,7 @@ public class ExpenseTrackerApp extends Application {
         expenseData = FXCollections.observableArrayList(new ExpenseService().getAllExpenses());
         table.setItems(expenseData);
 
-        // Create buttons for adding, editing, deleting expenses, and managing categories
+        // Create buttons for expense operations
         Button addButton = new Button("Add Expense");
         addButton.setOnAction(e -> showExpenseDialog(null));
 
@@ -69,7 +90,7 @@ public class ExpenseTrackerApp extends Application {
         Button manageCategoryButton = new Button("Manage Category");
         manageCategoryButton.setOnAction(e -> showCategoryManagementDialog());
 
-        // Set up the toolbar layout
+        // Set up the toolbar layout with the buttons
         ToolBar toolBar = new ToolBar(addButton, editButton, deleteButton, manageCategoryButton);
         BorderPane layout = new BorderPane();
         layout.setCenter(table);
@@ -81,14 +102,25 @@ public class ExpenseTrackerApp extends Application {
         primaryStage.show();
     }
 
-    // Create a TableColumn for the specified title and property
+    /**
+     * Creates a TableColumn for the expense table.
+     *
+     * @param <T>      the type of data contained in the column
+     * @param title    the column header title
+     * @param property the property name of Expense class mapped to this column
+     * @return a configured TableColumn
+     */
     private <T> TableColumn<Expense, T> createColumn(String title, String property) {
         TableColumn<Expense, T> column = new TableColumn<>(title);
         column.setCellValueFactory(new PropertyValueFactory<>(property));
         return column;
     }
 
-    // Show a dialog for adding or editing an expense
+    /**
+     * Displays a dialog to add a new expense or edit an existing one.
+     *
+     * @param oldExpense the expense to edit, or null to add a new expense
+     */
     private void showExpenseDialog(Expense oldExpense) {
         Dialog<Expense> dialog = new Dialog<>();
         dialog.setTitle(oldExpense == null ? "Add Expense" : "Edit Expense");
@@ -139,6 +171,8 @@ public class ExpenseTrackerApp extends Application {
         grid.add(datePicker, 1, 3);
 
         dialog.getDialogPane().setContent(grid);
+
+        // Convert dialog result into an Expense object when Save is clicked
         dialog.setResultConverter(dialogButton -> {
             if (dialogButton == saveButtonType) {
                 LocalDate selectedDate = datePicker.getValue();
@@ -172,7 +206,7 @@ public class ExpenseTrackerApp extends Application {
         Optional<Expense> result = dialog.showAndWait();
         result.ifPresent(newExpenseResult -> {
             try {
-                // Add or update the expense in the data list
+                // Add or update the expense in the data list and database
                 if (oldExpense == null) {
                     expenseData.add(newExpenseResult);
                     new ExpenseService().addExpense(newExpenseResult);
@@ -186,7 +220,10 @@ public class ExpenseTrackerApp extends Application {
         });
     }
 
-    // Show a dialog to manage expense categories
+    /**
+     * Displays a dialog to manage the expense categories.
+     * Users can add, edit, or delete categories.
+     */
     private void showCategoryManagementDialog() {
         Dialog<ButtonType> dialog = new Dialog<>();
         dialog.setTitle("Manage Categories");
@@ -233,7 +270,9 @@ public class ExpenseTrackerApp extends Application {
         dialog.showAndWait();
     }
 
-    // Show dialog to add a new category
+    /**
+     * Shows a dialog to add a new expense category.
+     */
     private void showAddCategoryDialog() {
         TextInputDialog dialog = new TextInputDialog();
         dialog.setTitle("Add Category");
@@ -252,7 +291,11 @@ public class ExpenseTrackerApp extends Application {
         });
     }
 
-    // Show dialog to edit an existing category
+    /**
+     * Shows a dialog to edit an existing category name.
+     *
+     * @param oldCategory the existing category name to edit
+     */
     private void showEditCategoryDialog(String oldCategory) {
         TextInputDialog dialog = new TextInputDialog(oldCategory);
         dialog.setTitle("Edit Category");
@@ -272,13 +315,22 @@ public class ExpenseTrackerApp extends Application {
         });
     }
 
-    // Show dialog to delete a category
+    /**
+     * Deletes a category from the list.
+     *
+     * @param category the category name to delete
+     */
     private void showDeleteCategoryDialog(String category) {
         categories.remove(category);
         showAlert("Success", "Category deleted successfully!");
     }
 
-    // Utility method to show an alert dialog
+    /**
+     * Utility method to show an information alert dialog.
+     *
+     * @param title   the title of the alert window
+     * @param content the message content of the alert
+     */
     private void showAlert(String title, String content) {
         Alert alert = new Alert(Alert.AlertType.INFORMATION);
         alert.setTitle(title);
@@ -287,7 +339,11 @@ public class ExpenseTrackerApp extends Application {
         alert.showAndWait();
     }
 
-    // Main method to launch the application
+    /**
+     * Main method launching the JavaFX application.
+     *
+     * @param args command line arguments (not used)
+     */
     public static void main(String[] args) {
         launch(args);
     }
