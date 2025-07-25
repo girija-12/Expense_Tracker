@@ -60,8 +60,8 @@ Make sure you have the following installed:
 1. **Clone the repository:**
 
    ```bash
-   git clone https://github.com/yourusername/expense-tracker.git
-   cd expense-tracker
+   git clone https://github.com/girija-12/Expense_Tracker.git
+   cd Expense_Tracker
    ```
 
 2. **Add JavaFX libraries to your project:**
